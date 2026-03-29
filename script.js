@@ -436,3 +436,6 @@ async function generateBotResponse(input) {
         createMessage("🌐 Network error. Please check your connection.", 'bot-message');
     }
 }
+
+// --- INITIAL LOAD ---
+renderQuestion();
