@@ -9,13 +9,13 @@ const sections = document.querySelectorAll('.view-section');
 function switchTab(targetId) {
     navBtns.forEach(btn => btn.dataset.target === targetId ? btn.classList.add('active') : btn.classList.remove('active'));
     sections.forEach(sec => {
-        if (sec.id === targetId) { sec.classList.remove('hidden'); sec.classList.add('active'); } 
+        if (sec.id === targetId) { sec.classList.remove('hidden'); sec.classList.add('active'); }
         else { sec.classList.remove('active'); sec.classList.add('hidden'); }
     });
 
     if (targetId !== 'breathing' && isBreathing) stopBreathing();
     if (targetId !== 'breathing' && typeof audioPlaying !== 'undefined' && audioPlaying) toggleAmbientSound();
-    
+
     // Auto-scroll sidebar logic for mobile
     if (window.innerWidth < 850) {
         document.querySelector('.nav-menu').scrollLeft = 0;
@@ -106,7 +106,7 @@ function generateInsights() {
     switchTab('insights');
     insightsEmpty.classList.add('hidden');
     insightsResult.classList.remove('hidden');
-    
+
     let title = "", desc = "", guidance = [], badgeColor = "", statusText = "";
 
     if (totalScore <= 8) {
@@ -129,7 +129,7 @@ function generateInsights() {
     resultStatus.textContent = statusText;
     resultTitle.textContent = title;
     resultDesc.textContent = desc;
-    
+
     actionItems.innerHTML = '';
     guidance.forEach(item => {
         const li = document.createElement('li');
@@ -139,7 +139,7 @@ function generateInsights() {
 
     renderChart();
     currentQuestionIndex = 0; totalScore = 0; categoryScores = { E: 0, P: 0, C: 0 };
-    setTimeout(renderQuestion, 1000); 
+    setTimeout(renderQuestion, 1000);
 }
 
 function renderChart() {
@@ -181,7 +181,7 @@ const toggleAudioBtn = document.getElementById('toggle-audio-btn');
 let audioPlaying = false;
 
 function toggleAmbientSound() {
-    if (audioPlaying) { audioObject.pause(); toggleAudioBtn.innerHTML = '<i data-lucide="volume-x"></i> Enable Peaceful Rain'; audioPlaying = false; } 
+    if (audioPlaying) { audioObject.pause(); toggleAudioBtn.innerHTML = '<i data-lucide="volume-x"></i> Enable Peaceful Rain'; audioPlaying = false; }
     else { audioObject.play().catch(e => console.log("Audio play prevented", e)); toggleAudioBtn.innerHTML = '<i data-lucide="volume-2"></i> Stop Audio'; audioPlaying = true; }
     lucide.createIcons();
 }
@@ -210,21 +210,21 @@ function initBubbles() {
     bubbleGrid.innerHTML = '';
     let poppedCount = 0;
     const totalBubbles = 28;
-    
+
     for (let i = 0; i < totalBubbles; i++) {
         let b = document.createElement('div');
         b.className = 'bubble';
-        b.onclick = function() {
-            if(!this.classList.contains('popped')) {
+        b.onclick = function () {
+            if (!this.classList.contains('popped')) {
                 this.classList.add('popped');
-                
+
                 // Play pop sound
                 const popSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
                 popSound.volume = 0.5;
                 popSound.play().catch(e => console.log('Audio disabled:', e));
-                
+
                 poppedCount++;
-                
+
                 // Automatically generate new sheet after a short delay
                 if (poppedCount === totalBubbles) {
                     setTimeout(() => {
@@ -265,7 +265,7 @@ function handlePeerKey(e) { if (e.key === 'Enter') sendPeerMessage(); }
 function sendPeerMessage() {
     const text = peerInput.value.trim();
     if (!text) return;
-    
+
     // Add user message to feed
     const msgDiv = document.createElement('div');
     msgDiv.className = 'peer-msg outgoing';
@@ -323,17 +323,17 @@ function confirmBooking() {
         err.classList.remove('hidden');
         return;
     }
-    
+
     // Get radio checked value
     const counselor = document.querySelector('input[name="counselor"]:checked').value;
-    
+
     // Show Modal
     const modal = document.getElementById('booking-modal');
     const details = document.getElementById('booking-details-text');
     details.innerHTML = `You are securely booked with <strong>${counselor}</strong><br>on <strong>${bookDate.value}</strong> at <strong>${selectedTime}</strong>.<br><br>The clinic will email your secure video link shortly.`;
-    
+
     modal.classList.remove('hidden');
-    
+
     // Reset selection locally
     document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
     selectedTime = null;
@@ -350,18 +350,28 @@ let chatOpen = false;
 
 function toggleChat() {
     chatOpen = !chatOpen;
-    if (chatOpen) { chatBody.style.display = 'flex'; chatChevron.style.transform = 'rotate(0deg)'; chatInput.focus(); } 
-    else { chatBody.style.display = 'none'; chatChevron.style.transform = 'rotate(180deg)'; }
+    if (chatOpen) {
+        chatBody.style.display = 'flex';
+        chatChevron.style.transform = 'rotate(0deg)';
+        chatInput.focus();
+    } else {
+        chatBody.style.display = 'none';
+        chatChevron.style.transform = 'rotate(180deg)';
+    }
 }
 
-function handleChatKey(e) { if (e.key === 'Enter') sendMessage(); }
+function handleChatKey(e) {
+    if (e.key === 'Enter') sendMessage();
+}
 
 function sendMessage() {
     const text = chatInput.value.trim();
     if (!text) return;
+
     createMessage(text, 'user-message');
     chatInput.value = '';
-    setTimeout(() => generateBotResponse(text.toLowerCase()), 800);
+
+    generateBotResponse(text);
 }
 
 function createMessage(text, className) {
@@ -370,15 +380,22 @@ function createMessage(text, className) {
     msgDiv.textContent = text;
     chatMessages.appendChild(msgDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-}async function generateBotResponse(input) {
-    // Safety fallback (client-side intercept for severe crises)
+}
+
+// 🔥 FINAL BOT RESPONSE FUNCTION (CONNECTED TO YOUR API)
+async function generateBotResponse(input) {
     const lowerInput = input.toLowerCase();
+
+    // 🚨 Safety fallback
     if (lowerInput.includes('suicide') || lowerInput.includes('die') || lowerInput.includes('kill')) {
-        createMessage("Please know that your life has immense intrinsic value. If you are in crisis, please go to our 'Emergency' tab right now, or call 988 immediately. Professional help is available 24/7.", 'bot-message');
+        createMessage(
+            "Please know your life matters. If you're in crisis, please go to the Emergency tab or call 988 immediately.",
+            'bot-message'
+        );
         return;
     }
 
-    // Display "Thinking..." indicator
+    // ⏳ Typing indicator
     const typingIndicator = document.createElement('div');
     typingIndicator.className = 'message bot-message';
     typingIndicator.innerHTML = '<i>Thinking...</i>';
@@ -386,32 +403,36 @@ function createMessage(text, className) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
     try {
-        // Send request to Vercel Serverless Function instead of Google servers directly
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ input: input })
+            body: JSON.stringify({ input })
         });
 
         const data = await response.json();
-        chatMessages.removeChild(typingIndicator);
 
-        if (data.error) {
+        // Remove typing
+        if (chatMessages.contains(typingIndicator)) {
+            chatMessages.removeChild(typingIndicator);
+        }
+
+        // ❌ Handle API error properly
+        if (!response.ok || data.error) {
             console.error('API Error:', data.error);
-            createMessage("API Error details: " + data.error, 'bot-message');
+            createMessage("⚠️ Server error. Please try again later.", 'bot-message');
             return;
         }
 
-        // Extract ai text
-        const botReply = data.reply;
-        createMessage(botReply, 'bot-message');
+        // ✅ Show AI reply
+        createMessage(data.reply || "I'm here for you 💙", 'bot-message');
 
     } catch (error) {
         console.error('Network Error:', error);
-        if (chatMessages.contains(typingIndicator)) chatMessages.removeChild(typingIndicator);
-        createMessage("Network error. Could not connect to the backend server.", 'bot-message');
+
+        if (chatMessages.contains(typingIndicator)) {
+            chatMessages.removeChild(typingIndicator);
+        }
+
+        createMessage("🌐 Network error. Please check your connection.", 'bot-message');
     }
 }
-
-// --- INITIAL LOAD ---
-renderQuestion();
