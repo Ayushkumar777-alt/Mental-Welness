@@ -370,8 +370,7 @@ function createMessage(text, className) {
     msgDiv.textContent = text;
     chatMessages.appendChild(msgDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-}// --- FILL IN YOUR API KEY HERE ---
-const GEMINI_API_KEY = "AIzaSyBd_1Hsz4XWZEwPOTKyJOAODtLyr37xLeo";
+}
 
 async function generateBotResponse(input) {
     if (GEMINI_API_KEY === "YOUR_API_KEY_HERE" || !GEMINI_API_KEY) {
@@ -394,7 +393,7 @@ async function generateBotResponse(input) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
     try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=process.env.API_KEY`;
         
         // Persona prompt instruction
         const prompt = `You are a supportive, highly empathetic Wellness AI named 'Mindful Space AI' on a mental wellness web app. Reply conversationally, warmly, and concisely (1 to 2 sentences max) to this human: "${input}"`;
