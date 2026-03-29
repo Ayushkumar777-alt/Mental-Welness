@@ -370,14 +370,7 @@ function createMessage(text, className) {
     msgDiv.textContent = text;
     chatMessages.appendChild(msgDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-async function generateBotResponse(input) {
-    if (GEMINI_API_KEY === "YOUR_API_KEY_HERE" || !GEMINI_API_KEY) {
-        createMessage("🤖 Real AI is ready! Please paste your new Gemini API Key inside the script.js file to enable intelligent responses.", 'bot-message');
-        return;
-    }
-
+}async function generateBotResponse(input) {
     // Safety fallback (client-side intercept for severe crises)
     const lowerInput = input.toLowerCase();
     if (lowerInput.includes('suicide') || lowerInput.includes('die') || lowerInput.includes('kill')) {
@@ -393,36 +386,30 @@ async function generateBotResponse(input) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
     try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=process.env.API_KEY`;
-        
-        // Persona prompt instruction
-        const prompt = `You are a supportive, highly empathetic Wellness AI named 'Mindful Space AI' on a mental wellness web app. Reply conversationally, warmly, and concisely (1 to 2 sentences max) to this human: "${input}"`;
-        
-        const response = await fetch(url, {
+        // Send request to Vercel Serverless Function instead of Google servers directly
+        const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-            })
+            body: JSON.stringify({ input: input })
         });
 
         const data = await response.json();
         chatMessages.removeChild(typingIndicator);
 
         if (data.error) {
-            console.error('Gemini API Error:', data.error);
-            createMessage("API Error details: " + data.error.message, 'bot-message');
+            console.error('API Error:', data.error);
+            createMessage("API Error details: " + data.error, 'bot-message');
             return;
         }
 
         // Extract ai text
-        const botReply = data.candidates[0].content.parts[0].text;
+        const botReply = data.reply;
         createMessage(botReply, 'bot-message');
 
     } catch (error) {
         console.error('Network Error:', error);
         if (chatMessages.contains(typingIndicator)) chatMessages.removeChild(typingIndicator);
-        createMessage("Network error. Could not connect to the Google Gemini servers.", 'bot-message');
+        createMessage("Network error. Could not connect to the backend server.", 'bot-message');
     }
 }
 
