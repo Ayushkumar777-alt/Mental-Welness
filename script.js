@@ -371,7 +371,7 @@ function createMessage(text, className) {
     chatMessages.appendChild(msgDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }// --- FILL IN YOUR API KEY HERE ---
-const GEMINI_API_KEY = "AIzaSyCvFkryFqNNoTZsqOVU-Vy1WXUr0Ca8nCk";
+const GEMINI_API_KEY = "AIzaSyBd_1Hsz4XWZEwPOTKyJOAODtLyr37xLeo";
 
 async function generateBotResponse(input) {
     if (GEMINI_API_KEY === "YOUR_API_KEY_HERE" || !GEMINI_API_KEY) {
