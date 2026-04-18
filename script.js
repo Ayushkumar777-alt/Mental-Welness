@@ -403,7 +403,11 @@ async function generateBotResponse(input) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
     try {
-        const response = await fetch('/api/chat', {
+        // Determine if we're running locally via Live Server or file://
+        const isLocalDev = window.location.protocol === 'file:' || (window.location.port !== '3000' && (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'));
+        const baseUrl = isLocalDev ? 'http://localhost:3000' : '';
+
+        const response = await fetch(`${baseUrl}/api/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ input })
@@ -433,7 +437,11 @@ async function generateBotResponse(input) {
             chatMessages.removeChild(typingIndicator);
         }
 
-        createMessage("🌐 Network error. Please check your connection.", 'bot-message');
+        if (window.location.protocol === 'file:' || (window.location.port !== '3000' && (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'))) {
+            createMessage("⚠️ I couldn't reach the backend server. If using Live Server, make sure you also open a terminal in VSCode and run 'npm start' to start the Node.js backend on port 3000!", 'bot-message');
+        } else {
+            createMessage("🌐 Network error. Please check your connection or make sure the server is running.", 'bot-message');
+        }
     }
 }
 
