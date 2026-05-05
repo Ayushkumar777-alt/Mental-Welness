@@ -223,6 +223,20 @@ body { background: linear-gradient(135deg, var(--bg-gradient-1), var(--bg-gradie
 .chat-input-area input { flex: 1; background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 8px 12px; font-size: 0.9rem; outline: none; }
 .chat-send-btn { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border: none; width: 35px; height: 35px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; box-shadow: 0 0 10px rgba(79, 70, 229, 0.5); }
 
+/* ----- AUTHENTICATION UI (NOW IN ACCOUNT TAB) ----- */
+.auth-card { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); padding: 40px; border-radius: var(--radius-lg); width: 100%; box-shadow: var(--shadow-md); text-align: left; }
+.auth-header { text-align: center; margin-bottom: 30px; }
+.auth-header h2 { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 10px 0 5px; }
+.auth-form { display: flex; flex-direction: column; gap: 15px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; }
+.auth-input { width: 100%; padding: 12px 15px; background: rgba(0,0,0,0.2); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-md); font-size: 1rem; outline: none; transition: all 0.3s ease; }
+.auth-input:focus { border-color: var(--primary); box-shadow: 0 0 10px rgba(99, 102, 241, 0.3); }
+.auth-error { font-size: 0.85rem; font-weight: 500; text-align: center; margin-top: 5px; }
+
+/* Profile Avatar */
+.profile-avatar { width: 80px; height: 80px; background: var(--primary-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; border: 2px solid var(--primary); }
+
 /* Responsive */
 @media (max-width: 850px) {
   .dashboard-wrapper { flex-direction: column; height: 100vh; border-radius: 0; }

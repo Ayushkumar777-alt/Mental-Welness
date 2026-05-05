@@ -1,12 +1,14 @@
-export default async function handler(req, res) {
-    // Allow only POST requests
-    if (req.method !== "POST") {
-        return res.status(405).json({ error: "Method not allowed" });
-    }
+const express = require('express');
+const router = express.Router();
+const Chat = require('../models/Chat');
 
+// @route   POST /api/chat
+// @desc    Send a message to the bot and save to history
+// @access  Public
+router.post('/', async (req, res) => {
     try {
         // Parse body safely
-        const { input } = req.body || {};
+        const { input, userId } = req.body || {};
 
         if (!input) {
             return res.status(400).json({ error: "Input is required" });
@@ -53,6 +55,21 @@ export default async function handler(req, res) {
             data?.candidates?.[0]?.content?.parts?.[0]?.text ||
             "I'm here for you. Can you tell me more?";
 
+        // Save to database if userId is provided
+        if (userId) {
+            try {
+                const newChat = new Chat({
+                    userId,
+                    userMessage: input,
+                    botReply: botReply
+                });
+                await newChat.save();
+            } catch (dbError) {
+                console.error("Error saving chat to database:", dbError);
+                // We don't fail the request here, just log the error
+            }
+        }
+
         return res.status(200).json({ reply: botReply });
 
     } catch (error) {
@@ -61,4 +78,28 @@ export default async function handler(req, res) {
             error: "Internal server error",
         });
     }
-}
+});
+
+// @route   GET /api/chat/:userId
+// @desc    Get chat history for a user
+// @access  Public
+router.get('/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        if (!userId) {
+            return res.status(400).json({ error: "User ID is required" });
+        }
+
+        const chats = await Chat.find({ userId }).sort({ createdAt: 1 });
+        
+        return res.status(200).json(chats);
+    } catch (error) {
+        console.error("Error fetching chat history:", error);
+        return res.status(500).json({
+            error: "Internal server error",
+        });
+    }
+});
+
+module.exports = router;

@@ -1,6 +1,12 @@
 // --- INITIALIZE ICONS ---
 lucide.createIcons();
 
+// --- API BASE URL FOR LOCAL DEV ---
+// If running via Live Server (port 5500, etc), point to Node server on 3000
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '3000' 
+    ? 'http://localhost:3000' 
+    : '';
+
 // --- DOM ELEMENTS (Global Navigation) ---
 const navBtns = document.querySelectorAll('.nav-btn');
 const sections = document.querySelectorAll('.view-section');
@@ -30,14 +36,28 @@ const moodResultBox = document.getElementById('mood-result');
 const loggedMoodText = document.getElementById('logged-mood');
 
 moodBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
+        const mood = btn.getAttribute('data-mood');
+        const user = JSON.parse(localStorage.getItem('user'));
+        
         // Remove selection from all
         moodBtns.forEach(b => b.classList.remove('selected'));
         // Select clicked
         btn.classList.add('selected');
         // Show result
         moodResultBox.classList.remove('hidden');
-        loggedMoodText.textContent = btn.getAttribute('data-mood');
+        loggedMoodText.textContent = mood;
+
+        // Save to DB
+        if (user && user.id) {
+            try {
+                await fetch(`${API_BASE}/api/mood`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: user.id, mood })
+                });
+            } catch (err) { console.error("Error saving mood:", err); }
+        }
     });
 });
 
@@ -102,7 +122,7 @@ function selectOption(category, score) {
     }
 }
 
-function generateInsights() {
+async function generateInsights() {
     switchTab('insights');
     insightsEmpty.classList.add('hidden');
     insightsResult.classList.remove('hidden');
@@ -138,6 +158,25 @@ function generateInsights() {
     });
 
     renderChart();
+
+    // Save Assessment to DB
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (user && user.id) {
+        try {
+            await fetch(`${API_BASE}/api/assessment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: user.id,
+                    emotionalScore: categoryScores.E,
+                    physicalScore: categoryScores.P,
+                    cognitiveScore: categoryScores.C,
+                    totalScore: totalScore
+                })
+            });
+        } catch (err) { console.error("Error saving assessment:", err); }
+    }
+
     currentQuestionIndex = 0; totalScore = 0; categoryScores = { E: 0, P: 0, C: 0 };
     setTimeout(renderQuestion, 1000);
 }
@@ -292,15 +331,33 @@ const boardGrid = document.getElementById('board-grid');
 const boardTextarea = document.getElementById('board-textarea');
 const boardStyles = ['board-note', 'board-note note-alt', 'board-note note-warn'];
 
-function postToBoard() {
+async function postToBoard() {
     const text = boardTextarea.value.trim();
     if (!text) return;
+    const user = JSON.parse(localStorage.getItem('user'));
+    const style = boardStyles[Math.floor(Math.random() * boardStyles.length)];
+
     const note = document.createElement('div');
-    note.className = boardStyles[Math.floor(Math.random() * boardStyles.length)];
+    note.className = style;
     note.textContent = `"${text}"`;
-    // Prepend to top of grid
     boardGrid.insertBefore(note, boardGrid.firstChild);
     boardTextarea.value = '';
+
+    // Save to DB
+    if (user && user.id) {
+        try {
+            await fetch(`${API_BASE}/api/posts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: user.id,
+                    username: user.username || "Anonymous",
+                    text: text,
+                    style: style
+                })
+            });
+        } catch (err) { console.error("Error saving post:", err); }
+    }
 }
 
 
@@ -403,14 +460,14 @@ async function generateBotResponse(input) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
     try {
-        // Determine if we're running locally via Live Server or file://
-        const isLocalDev = window.location.protocol === 'file:' || (window.location.port !== '3000' && (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'));
-        const baseUrl = isLocalDev ? 'http://localhost:3000' : '';
+        // Since server.js serves both frontend and API, we can just use the relative path
+        const user = JSON.parse(localStorage.getItem('user'));
+        const userId = user ? user.id : null;
 
-        const response = await fetch(`${baseUrl}/api/chat`, {
+        const response = await fetch(`${API_BASE}/api/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ input })
+            body: JSON.stringify({ input, userId })
         });
 
         const data = await response.json();
@@ -423,7 +480,8 @@ async function generateBotResponse(input) {
         // ❌ Handle API error properly
         if (!response.ok || data.error) {
             console.error('API Error:', data.error);
-            createMessage("⚠️ Server error. Please try again later.", 'bot-message');
+            const errorMessage = data.error || "Server error. Please try again later.";
+            createMessage(`⚠️ API Error: ${errorMessage}`, 'bot-message');
             return;
         }
 
@@ -437,13 +495,236 @@ async function generateBotResponse(input) {
             chatMessages.removeChild(typingIndicator);
         }
 
-        if (window.location.protocol === 'file:' || (window.location.port !== '3000' && (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'))) {
-            createMessage("⚠️ I couldn't reach the backend server. If using Live Server, make sure you also open a terminal in VSCode and run 'npm start' to start the Node.js backend on port 3000!", 'bot-message');
-        } else {
-            createMessage("🌐 Network error. Please check your connection or make sure the server is running.", 'bot-message');
-        }
+        createMessage("🌐 Network error: Couldn't reach the backend server. Please make sure the server is running.", 'bot-message');
     }
+}
+
+// 🔥 LOAD CHAT HISTORY
+async function loadChatHistory() {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user || !user.id) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/api/chat/${user.id}`);
+        if (!response.ok) throw new Error("Failed to load history");
+        
+        const history = await response.json();
+        
+        // Clear current window before loading history
+        chatMessages.innerHTML = '';
+        
+        if (history.length === 0) {
+            createMessage("Welcome back! I'm here to listen. How are you feeling today?", 'bot-message');
+        } else {
+            history.forEach(chat => {
+                createMessage(chat.userMessage, 'user-message');
+                createMessage(chat.botReply, 'bot-message');
+            });
+        }
+    } catch (err) {
+        console.error("History Error:", err);
+    }
+}
+
+// 🔥 LOAD ALL USER DATA
+async function loadUserData() {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user || !user.id) return;
+
+    // 1. Load Mood
+    try {
+        const res = await fetch(`${API_BASE}/api/mood/${user.id}`);
+        const data = await res.json();
+        if (data && data.mood) {
+            moodResultBox.classList.remove('hidden');
+            loggedMoodText.textContent = data.mood;
+            moodBtns.forEach(btn => {
+                if (btn.getAttribute('data-mood') === data.mood) btn.classList.add('selected');
+            });
+        }
+    } catch (err) { console.error("Error loading mood:", err); }
+
+    // 2. Load Last Assessment
+    try {
+        const res = await fetch(`${API_BASE}/api/assessment/${user.id}`);
+        const data = await res.json();
+        if (data) {
+            categoryScores = { E: data.emotionalScore, P: data.physicalScore, C: data.cognitiveScore };
+            renderChart();
+            insightsEmpty.classList.add('hidden');
+            insightsResult.classList.remove('hidden');
+            // Reset scores after rendering chart so next quiz starts fresh
+            categoryScores = { E: 0, P: 0, C: 0 };
+        }
+    } catch (err) { console.error("Error loading assessment:", err); }
+
+    // 3. Load Board Posts
+    try {
+        const res = await fetch(`${API_BASE}/api/posts`);
+        const posts = await res.json();
+        boardGrid.innerHTML = '';
+        posts.forEach(post => {
+            const note = document.createElement('div');
+            note.className = post.style;
+            note.textContent = `"${post.text}"`;
+            boardGrid.appendChild(note);
+        });
+    } catch (err) { console.error("Error loading posts:", err); }
 }
 
 // --- INITIAL LOAD ---
 renderQuestion();
+
+// --- AUTHENTICATION LOGIC ---
+const mainDashboard = document.getElementById('main-dashboard');
+const authFormsCard = document.getElementById('auth-forms-card');
+const userProfileCard = document.getElementById('user-profile-card');
+const profileUsername = document.getElementById('profile-username');
+const profileEmail = document.getElementById('profile-email');
+const logoutNavBtn = document.getElementById('logout-nav-btn');
+const loginForm = document.getElementById('login-form');
+const signupForm = document.getElementById('signup-form');
+const loginError = document.getElementById('login-error');
+const signupError = document.getElementById('signup-error');
+
+// Check if user is already logged in
+function checkAuth() {
+    try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            const user = JSON.parse(userStr);
+            if (user && user.id) {
+                // Logged in state
+                authFormsCard.classList.add('hidden');
+                userProfileCard.classList.remove('hidden');
+                logoutNavBtn.classList.remove('hidden');
+                profileUsername.textContent = user.username;
+                profileEmail.textContent = user.email;
+                
+                loadChatHistory();
+                loadUserData();
+            } else {
+                localStorage.removeItem('user');
+                showLoginState();
+            }
+        } else {
+            showLoginState();
+        }
+    } catch (err) {
+        console.error("Auth check error:", err);
+        localStorage.removeItem('user');
+        showLoginState();
+    }
+}
+
+function showLoginState() {
+    authFormsCard.classList.remove('hidden');
+    userProfileCard.classList.add('hidden');
+    logoutNavBtn.classList.add('hidden');
+}
+
+function handleLogout() {
+    localStorage.removeItem('user');
+    chatMessages.innerHTML = ''; // Clear chat window on logout
+    checkAuth();
+}
+
+function toggleAuthMode(mode) {
+    if (mode === 'signup') {
+        loginForm.classList.add('hidden');
+        signupForm.classList.remove('hidden');
+        loginError.classList.add('hidden');
+    } else {
+        signupForm.classList.add('hidden');
+        loginForm.classList.remove('hidden');
+        signupError.classList.add('hidden');
+    }
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    const btn = e.target.querySelector('button');
+    btn.disabled = true;
+    btn.textContent = 'Logging in...';
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        
+        let data;
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            data = await response.json();
+        } else {
+            const text = await response.text();
+            console.error("Non-JSON response:", text);
+            throw new Error("Server returned an invalid response. Please check if the backend is running correctly.");
+        }
+        
+        if (!response.ok) {
+            loginError.textContent = data.msg || 'Login failed: Incorrect email or password.';
+            loginError.classList.remove('hidden');
+        } else {
+            localStorage.setItem('user', JSON.stringify(data.user));
+            checkAuth();
+        }
+    } catch (err) {
+        console.error("Login Error:", err);
+        loginError.textContent = err.message.includes('fetch') ? 'Cannot connect to server. Is your Node server running?' : err.message;
+        loginError.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Login';
+    }
+}
+
+async function handleSignup(e) {
+    e.preventDefault();
+    const username = document.getElementById('signup-username').value;
+    const email = document.getElementById('signup-email').value;
+    const password = document.getElementById('signup-password').value;
+    const btn = e.target.querySelector('button');
+    btn.disabled = true;
+    btn.textContent = 'Signing up...';
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/auth/signup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, email, password })
+        });
+        
+        let data;
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            data = await response.json();
+        } else {
+            const text = await response.text();
+            console.error("Non-JSON response:", text);
+            throw new Error("Server returned an invalid response. Please check if the backend is running correctly.");
+        }
+        
+        if (!response.ok) {
+            signupError.textContent = data.msg || 'Signup failed: Account may already exist.';
+            signupError.classList.remove('hidden');
+        } else {
+            localStorage.setItem('user', JSON.stringify(data.user));
+            checkAuth();
+        }
+    } catch (err) {
+        console.error("Signup Error:", err);
+        signupError.textContent = err.message.includes('fetch') ? 'Cannot connect to server. Is your Node server running?' : err.message;
+        signupError.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Sign Up';
+    }
+}
+
+// Call on load
+checkAuth();
