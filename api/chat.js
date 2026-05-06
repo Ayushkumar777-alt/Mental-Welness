@@ -15,44 +15,50 @@ router.post('/', async (req, res) => {
         }
 
         // Get API key from environment
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = process.env.GROQ_API_KEY;
 
         if (!apiKey) {
             return res.status(500).json({
-                error: "GEMINI_API_KEY environment variable is not set.",
+                error: "GROQ_API_KEY environment variable is not set.",
             });
         }
 
-        // Gemini API URL
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+        // Groq API URL
+        const url = "https://api.groq.com/openai/v1/chat/completions";
 
         // Prompt
-        const prompt = `You are a supportive, empathetic Wellness AI named "Mindful Space AI". Reply warmly and briefly (1–2 sentences max) to this user: "${input}"`;
+        const systemPrompt = `You are a supportive, empathetic Wellness AI named "Mindful Space AI". Reply warmly and briefly (1–2 sentences max).`;
 
-        // Call Gemini API
+        // Call Groq API
         const response = await fetch(url, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: input }
+                ],
+                max_tokens: 100
             }),
         });
 
         const data = await response.json();
 
-        // Handle Gemini errors
+        // Handle Groq errors
         if (!response.ok || data.error) {
-            console.error("Gemini API Error:", data);
+            console.error("Groq API Error:", data);
             return res.status(500).json({
-                error: data?.error?.message || "Gemini API failed",
+                error: data?.error?.message || "Groq API failed",
             });
         }
 
         // Extract reply safely
         const botReply =
-            data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+            data?.choices?.[0]?.message?.content ||
             "I'm here for you. Can you tell me more?";
 
         // Save to database if userId is provided

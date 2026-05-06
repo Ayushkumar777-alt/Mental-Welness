@@ -8,7 +8,7 @@ const moodRoutes = require('./api/mood');
 const assessmentRoutes = require('./api/assessment');
 const postRoutes = require('./api/posts');
 
-require('dotenv').config();
+require('dotenv').config({ override: true });
 
 const app = express();
 const PORT = process.env.PORT || 3000;

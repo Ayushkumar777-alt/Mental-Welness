@@ -3,9 +3,8 @@ lucide.createIcons();
 
 // --- API BASE URL FOR LOCAL DEV ---
 // If running via Live Server (port 5500, etc), point to Node server on 3000
-const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '3000' 
-    ? 'http://localhost:3000' 
-    : '';
+// Use localhost:3000 if running on a different port (like Live Server) or via file:// protocol
+const API_BASE = (window.location.port !== '3000') ? 'http://localhost:3000' : '';
 
 // --- DOM ELEMENTS (Global Navigation) ---
 const navBtns = document.querySelectorAll('.nav-btn');
